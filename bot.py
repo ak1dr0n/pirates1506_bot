@@ -28,6 +28,9 @@ INTRO_TEXT = """
 Начните у Первой Преграды. ⚓
 """
 
+# --- Подсказка куда плыть перед точкой 1 (отправляется по /start) ---
+START_HINT = "🗺 Снимайте швартовы! Курс на Первую Преграду — плывите к дамбе на реке!"
+
 # --- Шаги квеста ---
 # riddle   — загадка, которую видит команда
 # answer   — правильный ответ (ЗАГЛАВНЫМИ, бот примет любой регистр)
@@ -205,11 +208,19 @@ async def advance(update: Update):
         await send_current_riddle(update)
 
 
+async def bot_added(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправить вступление когда бот добавлен в группу."""
+    for member in update.message.new_chat_members:
+        if member.id == context.bot.id:
+            await update.message.reply_text(INTRO_TEXT)
+            break
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Начать квест."""
+    """Начать квест — отправить подсказку к точке 1 и загадку."""
     global quest_step
     quest_step = 1
-    await update.message.reply_text(INTRO_TEXT)
+    await update.message.reply_text(START_HINT)
     await send_current_riddle(update)
 
 
@@ -258,6 +269,7 @@ def main():
 
     app = Application.builder().token(token).build()
 
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, bot_added))
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("skip", cmd_skip))
     app.add_handler(CommandHandler("restart", cmd_restart))
