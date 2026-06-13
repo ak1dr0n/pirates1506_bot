@@ -1,5 +1,6 @@
 import os
 import logging
+import random
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -170,6 +171,20 @@ FINALE_TEXT = """
 P.S. С днём рождения, лоцман. Первый глоток — твой. 🥃
 """
 
+# --- Ответы на неправильные попытки ---
+WRONG_ANSWERS = [
+    "Нет, морская крыса! Черкас смеётся с того света. 💀",
+    "Ха! Мимо. Думайте лучше, засранцы! ☠️",
+    "Неверно! Даже мой мушкет стрелял точнее. 🔫",
+    "Черкас разочарован. Он умер ради этого?! 😤",
+    "Нет-нет-нет. Ром помутил вам разум? 🍺",
+    "Промах! Якорь вам в голову! ⚓",
+    "Не угадали. Семеро морских псов — и никто не знает ответа?! 🌊",
+    "Черкас обиделся и ушёл пить ром на том свете. Пробуйте ещё. 🥃",
+    "Нет. Черкас скрипит зубами. Хотя он мёртвый, так что буквально. 💀",
+    "Это провал. Пираты Харькова опозорены. Думайте! ⚓",
+]
+
 # ================================================================
 # КОД БОТА — ЗДЕСЬ ЛУЧШЕ НИЧЕГО НЕ МЕНЯТЬ
 # ================================================================
@@ -209,10 +224,15 @@ async def advance(update: Update):
 
 
 async def bot_added(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправить вступление когда бот добавлен в группу."""
+    """Отправить вступление и карту когда бот добавлен в группу."""
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
             await update.message.reply_text(INTRO_TEXT)
+            try:
+                with open("map.jpg", "rb") as photo:
+                    await update.message.reply_photo(photo, caption="🗺 Карта капитана Черкаса")
+            except FileNotFoundError:
+                pass  # Карта не загружена — продолжаем без неё
             break
 
 
@@ -251,15 +271,22 @@ async def cmd_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Проверять ответы участников."""
+    """Проверять ответы участников. Реагирует только на одиночные слова."""
     if quest_step == 0 or quest_step > len(STEPS):
         return
 
     text = update.message.text.strip().upper()
+
+    # Реагируем только на одиночные слова — чтобы не влезать в обычный разговор
+    if len(text.split()) != 1:
+        return
+
     expected = STEPS[quest_step - 1]["answer"].upper()
 
     if text == expected:
         await advance(update)
+    else:
+        await update.message.reply_text(random.choice(WRONG_ANSWERS))
 
 
 def main():
